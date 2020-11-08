@@ -1,45 +1,48 @@
-import React, { useEffect } from "react";
-import ProductItem from "../ProductItem";
-import { useStoreContext } from "../../utils/GlobalState";
-import { UPDATE_PRODUCTS } from "../../utils/actions";
+import React, { useEffect } from 'react';
 import { useQuery } from '@apollo/react-hooks';
+import ProductItem from "../ProductItem";
 import { QUERY_PRODUCTS } from "../../utils/queries";
+import { UPDATE_PRODUCTS } from '../../utils/store/actions';
 import { idbPromise } from "../../utils/helpers";
 import spinner from "../../assets/spinner.gif"
 
+// Import Redux
+import { useDispatch, useSelector } from 'react-redux'
+
 function ProductList() {
-  const [state, dispatch] = useStoreContext();
+  const dispatch = useDispatch();
+  const state = useSelector(state => state);
 
-  const { currentCategory } = state;
+const { currentCategory } = state;
 
-  const { loading, data } = useQuery(QUERY_PRODUCTS);
+const { loading, data } = useQuery(QUERY_PRODUCTS);
 
-  useEffect(() => {
-    if(data) {
+useEffect(() => {
+  if (data) {
+    dispatch({
+      type: UPDATE_PRODUCTS,
+      products: data.products
+    });
+    data.products.forEach((product) => {
+      idbPromise('products', 'put', product);
+    });
+  } else if (!loading) {
+    idbPromise('products', 'get').then((products) => {
       dispatch({
-           type: UPDATE_PRODUCTS,
-          products: data.products
-        });
-        data.products.forEach((product) => {
-          idbPromise('products', 'put', product);
-        });
-    } else if (!loading) {
-      idbPromise('products', 'get').then((products) => {
-        dispatch({
-          type: UPDATE_PRODUCTS,
-         products: products
-       });
+        type: UPDATE_PRODUCTS,
+        products: products
       });
-    }
-  }, [data, loading, dispatch]);
+    });
+  }
+}, [data, loading, dispatch]);
 
-  function filterProducts() {
+function filterProducts() {
     if (!currentCategory) {
       return state.products;
-    }
-
-    return state.products.filter(product => product.category._id === currentCategory);
   }
+
+  return state.products.filter(product => product.category._id === currentCategory);
+}
 
   return (
     <div className="my-2">
